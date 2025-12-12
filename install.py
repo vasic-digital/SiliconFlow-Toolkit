@@ -107,7 +107,7 @@ class EnhancedSiliconFlowConfigBuilder:
         if registry.chat_models.models:
             providers["siliconflow-chat"] = {
                 "name": "SiliconFlow Chat Models",
-                "type": "openai-compatible",
+                "type": "openai-compat",
                 "api_key": self.api_key,
                 "base_url": "https://api.siliconflow.com/v1/chat/completions",
                 "capabilities": [
@@ -130,7 +130,7 @@ class EnhancedSiliconFlowConfigBuilder:
         if registry.vision_models.models:
             providers["siliconflow-vision"] = {
                 "name": "SiliconFlow Vision Models",
-                "type": "openai-compatible",
+                "type": "openai-compat",
                 "api_key": self.api_key,
                 "base_url": "https://api.siliconflow.com/v1/chat/completions",
                 "capabilities": ["vision", "chat", "tool-calling"],
@@ -146,7 +146,7 @@ class EnhancedSiliconFlowConfigBuilder:
         if registry.audio_models.models:
             providers["siliconflow-audio"] = {
                 "name": "SiliconFlow Audio Models",
-                "type": "openai-compatible",
+                "type": "openai-compat",
                 "api_key": self.api_key,
                 "base_url": "https://api.siliconflow.com/v1/audio/speech",
                 "capabilities": ["audio", "speech"],
@@ -162,7 +162,7 @@ class EnhancedSiliconFlowConfigBuilder:
         if registry.video_models.models:
             providers["siliconflow-video"] = {
                 "name": "SiliconFlow Video Models",
-                "type": "openai-compatible",
+                "type": "openai-compat",
                 "api_key": self.api_key,
                 "base_url": "https://api.siliconflow.com/v1/videos/submit",
                 "capabilities": ["video"],

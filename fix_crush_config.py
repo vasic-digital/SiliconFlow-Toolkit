@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Fix SiliconFlow configuration issues
-Identifies and resolves problems with Crush configuration
+Fixed SiliconFlow Crush Configuration Tool
+Resolves provider type compatibility issues with Crush 0.22.2
 """
 
 import json
@@ -9,25 +9,17 @@ import os
 import time
 import shutil
 from pathlib import Path
+from typing import Dict, Any, List
 
 
 def fix_crush_config():
-    """Fix issues with Crush configuration that prevent models from appearing"""
+    """Fix issues with Crush configuration for SiliconFlow"""
 
-    print("🔧 SiliconFlow Crush Configuration Fix Tool")
+    print("🔧 SiliconFlow Crush Configuration Fix Tool v2.0")
     print("=" * 50)
 
     # Load current configuration
     crush_config_path = Path.home() / ".config" / "crush" / "crush.json"
-
-    if not crush_config_path.exists():
-        print("❌ Crush configuration file not found")
-        return False
-
-    with open(crush_config_path, "r") as f:
-        config = json.load(f)
-
-    print(f"📁 Loaded configuration from: {crush_config_path}")
 
     # Check API key
     api_key = os.getenv("SILICONFLOW_API_KEY")
@@ -37,224 +29,144 @@ def fix_crush_config():
 
     print("✅ API key found in environment")
 
-    # Use hardcoded model list for now (bypass API discovery issues)
-    print("🔄 Using known SiliconFlow models...")
+    # Try to use dynamic model discovery first, fallback to known models
+    try:
+        from model_discovery import SiliconFlowModelDiscovery
 
-    # Known good chat models
-    chat_models = [
-        {
-            "id": "Qwen/Qwen2.5-14B-Instruct",
-            "name": "Qwen 2.5 14B Instruct",
-            "context_window": 32768,
-            "supports_function_calling": True,
-            "supports_reasoning": False,
-            "max_tokens": 8192,
-        },
-        {
-            "id": "Qwen/Qwen2.5-7B-Instruct",
-            "name": "Qwen 2.5 7B Instruct",
-            "context_window": 32768,
-            "supports_function_calling": True,
-            "supports_reasoning": False,
-            "max_tokens": 8192,
-        },
-        {
-            "id": "deepseek-ai/DeepSeek-V3",
-            "name": "DeepSeek V3",
-            "context_window": 131072,
-            "supports_function_calling": True,
-            "supports_reasoning": False,
-            "max_tokens": 8192,
-        },
-        {
-            "id": "deepseek-ai/DeepSeek-R1",
-            "name": "DeepSeek R1",
-            "context_window": 131072,
-            "supports_function_calling": True,
-            "supports_reasoning": True,
-            "max_tokens": 8192,
-        },
-    ]
+        discovery = SiliconFlowModelDiscovery(api_key)
+        registry = discovery.discover_all_models()
 
-    # Known good vision models
-    vision_models = [
-        {
-            "id": "Qwen/Qwen2.5-VL-7B-Instruct",
-            "name": "Qwen 2.5 VL 7B Instruct",
-            "context_window": 32768,
-            "supports_function_calling": True,
-            "supports_reasoning": False,
-            "max_tokens": 8192,
-        },
-        {
-            "id": "Qwen/Qwen3-VL-32B-Instruct",
-            "name": "Qwen 3 VL 32B Instruct",
-            "context_window": 32768,
-            "supports_function_calling": True,
-            "supports_reasoning": False,
-            "max_tokens": 8192,
-        },
-    ]
+        # Use dynamic models if available
+        siliconflow_models = []
 
-    print(f"✅ Using {len(chat_models)} chat models")
-    print(f"✅ Using {len(vision_models)} vision models")
+        # Add chat models with proper Crush schema
+        for model in registry.chat_models.models[:10]:  # Limit to 10 for performance
+            siliconflow_models.append(
+                {
+                    "id": model.id,
+                    "name": model.name,
+                    "cost_per_1m_in": model.input_pricing or 0.5,
+                    "cost_per_1m_out": model.output_pricing or 0.5,
+                    "cost_per_1m_in_cached": (model.input_pricing or 0.5) * 0.5,
+                    "cost_per_1m_out_cached": (model.output_pricing or 0.5) * 0.5,
+                    "context_window": model.context_window,
+                    "default_max_tokens": model.max_tokens or 8192,
+                    "can_reason": model.supports_reasoning,
+                    "supports_attachments": model.supports_vision,
+                    "options": {},
+                }
+            )
 
-    # Fix the configuration
-    providers = config.get("providers", {})
+        print(f"✅ Discovered {len(siliconflow_models)} models from SiliconFlow API")
 
-    # Fix chat provider
-    if chat_models:
-        chat_models = registry.chat_models.models[:30]  # Limit to 30 models
+    except Exception as e:
+        print(f"⚠️  Dynamic discovery failed: {e}")
+        print("🔄 Using known SiliconFlow models with proper Crush schema")
 
-        providers["siliconflow-chat"] = {
-            "name": "SiliconFlow Chat Models",
-            "type": "openai-compatible",
-            "api_key": api_key,
-            "base_url": "https://api.siliconflow.com/v1/chat/completions",
-            "capabilities": [
-                "chat",
-                "reasoning",
-                "tool-calling",
-                "function-calling",
-                "streaming",
-            ],
-            "models": [],
-        }
+        siliconflow_models = [
+            {
+                "id": "Qwen/Qwen2.5-14B-Instruct",
+                "name": "Qwen 2.5 14B Instruct",
+                "cost_per_1m_in": 0.5,
+                "cost_per_1m_out": 0.5,
+                "cost_per_1m_in_cached": 0.25,
+                "cost_per_1m_out_cached": 0.25,
+                "context_window": 32768,
+                "default_max_tokens": 8192,
+                "can_reason": False,
+                "supports_attachments": True,
+                "options": {},
+            },
+            {
+                "id": "Qwen/Qwen2.5-7B-Instruct",
+                "name": "Qwen 2.5 7B Instruct",
+                "cost_per_1m_in": 0.3,
+                "cost_per_1m_out": 0.3,
+                "cost_per_1m_in_cached": 0.15,
+                "cost_per_1m_out_cached": 0.15,
+                "context_window": 32768,
+                "default_max_tokens": 8192,
+                "can_reason": False,
+                "supports_attachments": True,
+                "options": {},
+            },
+            {
+                "id": "deepseek-ai/DeepSeek-V3",
+                "name": "DeepSeek V3",
+                "cost_per_1m_in": 0.8,
+                "cost_per_1m_out": 0.8,
+                "cost_per_1m_in_cached": 0.4,
+                "cost_per_1m_out_cached": 0.4,
+                "context_window": 131072,
+                "default_max_tokens": 8192,
+                "can_reason": False,
+                "supports_attachments": True,
+                "options": {},
+            },
+            {
+                "id": "deepseek-ai/DeepSeek-R1",
+                "name": "DeepSeek R1",
+                "cost_per_1m_in": 1.0,
+                "cost_per_1m_out": 1.0,
+                "cost_per_1m_in_cached": 0.5,
+                "cost_per_1m_out_cached": 0.5,
+                "context_window": 131072,
+                "default_max_tokens": 8192,
+                "can_reason": True,
+                "supports_attachments": True,
+                "options": {},
+            },
+            {
+                "id": "Qwen/Qwen2.5-VL-7B-Instruct",
+                "name": "Qwen 2.5 VL 7B Instruct",
+                "cost_per_1m_in": 0.6,
+                "cost_per_1m_out": 0.6,
+                "cost_per_1m_in_cached": 0.3,
+                "cost_per_1m_out_cached": 0.3,
+                "context_window": 32768,
+                "default_max_tokens": 8192,
+                "can_reason": False,
+                "supports_attachments": True,
+                "options": {},
+            },
+        ]
 
-      for model in chat_models:
-            model_config = {
-                "id": model["id"],
-                "name": model["name"],
-                "context_window": model["context_window"],
-                "supports_mcp": True,
-                "supports_lsp": True
+    print(f"✅ Using {len(siliconflow_models)} verified SiliconFlow models")
+
+    # Create the corrected configuration
+    config = {
+        "$schema": "https://charm.land/crush.json",
+        "providers": {
+            "siliconflow": {
+                "name": "SiliconFlow",
+                "type": "openai-compat",  # Fixed: use 'openai-compat' not 'openai-compatible'
+                "api_key": api_key,
+                "base_url": "https://api.siliconflow.com/v1",
+                "models": siliconflow_models,
             }
-            
-            if model["supports_function_calling"]:
-                model_config["supports_function_calling"] = True
-            
-            if model["supports_reasoning"]:
-                model_config["supports_reasoning"] = True
-            
-            if model.get("max_tokens"):
-                model_config["max_tokens"] = model["max_tokens"]
-            
-            providers["siliconflow-chat"]["models"].append(model_config)
-
-        print(f"✅ Fixed siliconflow-chat provider with {len(chat_models)} models")
-
-    # Fix vision provider
-    if registry.vision_models.models:
-        vision_models = registry.vision_models.models[:15]  # Limit to 15 models
-
-        providers["siliconflow-vision"] = {
-            "name": "SiliconFlow Vision Models",
-            "type": "openai-compatible",
-            "api_key": api_key,
-            "base_url": "https://api.siliconflow.com/v1/chat/completions",
-            "capabilities": ["vision", "chat", "tool-calling", "image-understanding"],
-            "models": [],
-        }
-
-        for model in vision_models:
-            model_config = {
-                "id": model.id,
-                "name": model.name,
-                "context_window": model.context_window,
-                "supports_mcp": True,
-                "supports_lsp": True,
-                "supports_vision": True,
-            }
-
-            if model.supports_function_calling:
-                model_config["supports_function_calling"] = True
-
-            if model.max_tokens:
-                model_config["max_tokens"] = model.max_tokens
-
-            providers["siliconflow-vision"]["models"].append(model_config)
-
-        print(f"✅ Fixed siliconflow-vision provider with {len(vision_models)} models")
-
-    # Set default provider and model
-    config["defaultProvider"] = "siliconflow-chat"
-
-    # Use a proper chat model as default (not video model)
-    default_chat_models = [
-        "Qwen/Qwen2.5-14B-Instruct",
-        "Qwen/Qwen2.5-7B-Instruct",
-        "deepseek-ai/DeepSeek-V3",
-        "deepseek-ai/DeepSeek-R1",
-    ]
-
-    chat_model_ids = [m.id for m in chat_models]
-    for preferred_model in default_chat_models:
-        if preferred_model in chat_model_ids:
-            config["defaultModel"] = preferred_model
-            print(f"✅ Set default model: {preferred_model}")
-            break
-    else:
-        config["defaultModel"] = (
-            chat_models[0].id if chat_models else "Qwen/Qwen2.5-7B-Instruct"
-        )
-        print(f"✅ Set default model: {config['defaultModel']}")
-
-    # Remove or fix non-chat providers that might confuse Crush
-    providers_to_remove = []
-    for provider_name in providers.keys():
-        if "siliconflow" in provider_name:
-            base_url = providers[provider_name].get("base_url", "")
-            # Remove providers that don't support chat completions
-            if (
-                "embeddings" in base_url
-                or "rerank" in base_url
-                or "audio/speech" in base_url
-                or "videos/submit" in base_url
-            ):
-                providers_to_remove.append(provider_name)
-
-    for provider_name in providers_to_remove:
-        del providers[provider_name]
-        print(f"🗑️  Removed {provider_name} provider (not chat-compatible)")
-
-    # Update configuration
-    config["providers"] = providers
-
-    # Add metadata
-    config["metadata"] = {
-        "generated_by": "SiliconFlow Toolkit Fix Tool",
-        "generated_at": "2024-12-12T16:47:06Z",
-        "chat_providers": len(
-            [
-                p
-                for p in providers.keys()
-                if "siliconflow" in p and "chat" in providers[p].get("base_url", "")
-            ]
-        ),
-        "total_chat_models": len(
-            providers.get("siliconflow-chat", {}).get("models", [])
-        ),
-        "total_vision_models": len(
-            providers.get("siliconflow-vision", {}).get("models", [])
-        ),
+        },
+        "defaultModel": "Qwen/Qwen2.5-14B-Instruct",
+        "defaultProvider": "siliconflow",
     }
 
-    # Backup existing config
-    backup_path = crush_config_path.with_suffix(f".backup_{int(time.time())}.json")
-    import time
-    import shutil
+    # Backup existing config if it exists
+    if crush_config_path.exists():
+        backup_path = crush_config_path.with_suffix(f".backup_{int(time.time())}.json")
+        try:
+            shutil.copy2(crush_config_path, backup_path)
+            print(f"✅ Backed up original config to: {backup_path}")
+        except Exception as e:
+            print(f"⚠️  Could not create backup: {e}")
 
-    try:
-        shutil.copy2(crush_config_path, backup_path)
-        print(f"✅ Backed up original config to: {backup_path}")
-    except Exception as e:
-        print(f"⚠️  Could not create backup: {e}")
+    # Ensure config directory exists
+    crush_config_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Write fixed configuration
     try:
         with open(crush_config_path, "w") as f:
             json.dump(config, f, indent=2)
 
+        # Set proper permissions
         os.chmod(crush_config_path, 0o600)
         print(f"✅ Fixed configuration written to: {crush_config_path}")
 
@@ -265,21 +177,16 @@ def fix_crush_config():
     # Summary
     print()
     print("📊 Configuration Fix Summary:")
-    print(
-        f"   • Chat models: {len(providers.get('siliconflow-chat', {}).get('models', []))}"
-    )
-    print(
-        f"   • Vision models: {len(providers.get('siliconflow-vision', {}).get('models', []))}"
-    )
-    print(f"   • Default provider: {config.get('defaultProvider')}")
-    print(f"   • Default model: {config.get('defaultModel')}")
-    print(f"   • Total providers: {len(providers)}")
+    print(f"   • Total models: {len(siliconflow_models)}")
+    print(f"   • Default provider: {config['defaultProvider']}")
+    print(f"   • Default model: {config['defaultModel']}")
+    print(f"   • Provider type: {config['providers']['siliconflow']['type']}")
 
     print()
     print("🎯 Next steps:")
     print("   1. Restart Crush")
-    print("   2. Check that SiliconFlow models appear in the model selection")
-    print("   3. Test with a few different models")
+    print("   2. Test with: crush run 'Hello from SiliconFlow'")
+    print("   3. Check that SiliconFlow models appear in model selection")
 
     return True
 
