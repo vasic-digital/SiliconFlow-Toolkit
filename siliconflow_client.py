@@ -390,47 +390,80 @@ class SiliconFlowAPIClient:
         model_lower = model_id.lower()
         type_lower = model_type.lower()
 
-        # Chat capabilities - be permissive since API may not provide types
-        capabilities["supports_chat"] = (
-            any(keyword in type_lower for keyword in ["chat", "text", "completion"])
-            or
-            # Assume most models support chat unless they have specific other purposes
-            not any(
-                keyword in model_lower
-                for keyword in [
-                    "embedding",
-                    "rerank",
-                    "tts",
-                    "speech",
-                    "audio",
-                    "video",
-                    "t2v",
-                    "i2v",
-                    "flux",
-                ]
-            )
-        )
+        # Initialize all capabilities to False
+        capabilities["supports_chat"] = False
+        capabilities["supports_vision"] = False
+        capabilities["supports_audio"] = False
+        capabilities["supports_video"] = False
+        capabilities["supports_embeddings"] = False
+        capabilities["supports_rerank"] = False
 
-        # Vision capabilities
-        capabilities["supports_vision"] = any(
-            keyword in model_lower for keyword in ["vl", "vision", "visual"]
-        )
-
-        # Audio capabilities
-        capabilities["supports_audio"] = any(
-            keyword in model_lower for keyword in ["tts", "audio", "speech"]
-        )
-
-        # Video capabilities
-        capabilities["supports_video"] = any(
-            keyword in model_lower for keyword in ["t2v", "video", "i2v"]
-        )
-
-        # Embedding capabilities
+        # Embedding capabilities - check type first
         capabilities["supports_embeddings"] = "embedding" in type_lower
 
-        # Rerank capabilities
+        # Rerank capabilities - check type first
         capabilities["supports_rerank"] = "rerank" in type_lower
+
+        # Audio capabilities - check both ID and type
+        audio_keywords = ["tts", "audio", "speech", "voice"]
+        capabilities["supports_audio"] = any(
+            keyword in model_lower for keyword in audio_keywords
+        ) or any(keyword in type_lower for keyword in audio_keywords)
+
+        # Video capabilities - check both ID and type
+        video_keywords = ["t2v", "video", "i2v", "flux"]
+        capabilities["supports_video"] = any(
+            keyword in model_lower for keyword in video_keywords
+        ) or any(keyword in type_lower for keyword in video_keywords)
+
+        # Vision capabilities - check both ID and type
+        vision_keywords = ["vl", "vision", "visual", "multimodal"]
+        capabilities["supports_vision"] = any(
+            keyword in model_lower for keyword in vision_keywords
+        ) or any(keyword in type_lower for keyword in vision_keywords)
+
+        # Chat capabilities - more conservative approach
+        # Models that are explicitly for other purposes should not be marked as chat
+        specialized_keywords = [
+            "embedding", "rerank", "tts", "speech", "audio", "video",
+            "t2v", "i2v", "flux", "vl", "vision", "visual", "multimodal"
+        ]
+        
+        # Check if model is specialized (has keywords for non-chat tasks)
+        is_specialized = any(keyword in model_lower for keyword in specialized_keywords)
+        
+        # Chat indicators in type
+        chat_type_indicators = ["chat", "text", "completion", "instruction", "instruct"]
+        has_chat_type = any(keyword in type_lower for keyword in chat_type_indicators)
+        
+        # Chat indicators in model ID (common chat model patterns)
+        chat_id_indicators = [
+            "instruct", "chat", "qwen", "deepseek", "glm", "kimi",
+            "llama", "mistral", "mixtral", "gemma", "phi", "yi"
+        ]
+        has_chat_id = any(keyword in model_lower for keyword in chat_id_indicators)
+        
+        # Determine chat capability
+        # Rule 1: If type explicitly indicates chat, mark as chat (unless specialized)
+        # Rule 2: If model ID indicates chat AND not specialized, mark as chat
+        # Rule 3: If type is unknown/empty and model not specialized, be conservative
+        if has_chat_type:
+            # Type indicates chat, but check if it's a specialized model
+            if not is_specialized:
+                capabilities["supports_chat"] = True
+            else:
+                # Specialized model with chat type (e.g., vision-language model)
+                # These often support chat too, so mark as chat
+                capabilities["supports_chat"] = True
+        elif has_chat_id and not is_specialized:
+            # Model ID suggests chat capability and not specialized
+            capabilities["supports_chat"] = True
+        elif type_lower == "" or type_lower == "unknown":
+            # No type information, be conservative
+            capabilities["supports_chat"] = False
+        else:
+            # Has type but not chat type, likely not a chat model
+            capabilities["supports_chat"] = False
 
         return capabilities
 

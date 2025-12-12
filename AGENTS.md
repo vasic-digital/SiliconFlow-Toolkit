@@ -132,6 +132,8 @@
 - Supports all provider and model configuration options
 - Preserves user settings during merges
 - Intelligent default model selection based on capabilities
+- **Timeout & Retry Configuration**: Includes `timeout: 30000` and `maxRetries: 2` to prevent hanging requests
+- **Chat-Only Filtering**: Only chat-capable models are exposed to OpenCode (non-chat models filtered out)
 
 ### Crush Schema
 - Fully compatible with `https://charm.land/crush.json`

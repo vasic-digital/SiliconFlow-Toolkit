@@ -45,31 +45,42 @@ class EnhancedSiliconFlowConfigBuilder:
         """Build OpenCode-compatible configuration"""
         registry = self.initialize_registry()
 
-        # Create model configurations
+        # Create model configurations - only include models that support chat
         models_dict = {}
-
-        # Add chat models
-        for model in registry.chat_models.models:
-            models_dict[model.id] = self._create_opencode_model_config(model)
-
-        # Add vision models
-        for model in registry.vision_models.models:
-            models_dict[model.id] = self._create_opencode_model_config(model)
-
-        # Add audio models
-        for model in registry.audio_models.models:
-            models_dict[model.id] = self._create_opencode_model_config(model)
-
-        # Add video models
-        for model in registry.video_models.models:
-            models_dict[model.id] = self._create_opencode_model_config(model)
-
-        # Determine default model
-        default_model = (
-            registry.chat_models.default_model
-            or registry.vision_models.default_model
-            or "Qwen/Qwen2.5-14B-Instruct"  # fallback
+        seen_model_ids = set()
+        
+        # Collect all models from all categories
+        all_models = (
+            registry.chat_models.models +
+            registry.vision_models.models +
+            registry.audio_models.models +
+            registry.video_models.models +
+            registry.embedding_models.models +
+            registry.rerank_models.models
         )
+        
+        # Filter to only include models that support chat
+        for model in all_models:
+            if model.id in seen_model_ids:
+                continue
+            if model.supports_chat:
+                models_dict[model.id] = self._create_opencode_model_config(model)
+                seen_model_ids.add(model.id)
+
+        # Determine default model - must be in models_dict
+        default_model = None
+        # Try chat default first
+        if registry.chat_models.default_model and registry.chat_models.default_model in models_dict:
+            default_model = registry.chat_models.default_model
+        # Try vision default next (if vision model also supports chat)
+        if not default_model and registry.vision_models.default_model and registry.vision_models.default_model in models_dict:
+            default_model = registry.vision_models.default_model
+        # Fallback to first model in dict
+        if not default_model and models_dict:
+            default_model = next(iter(models_dict.keys()))
+        # Ultimate fallback
+        if not default_model:
+            default_model = "Qwen/Qwen2.5-14B-Instruct"
 
         config = {
             "$schema": "https://opencode.ai/config.json",
@@ -80,7 +91,9 @@ class EnhancedSiliconFlowConfigBuilder:
                     "name": "SiliconFlow",
                     "options": {
                         "apiKey": self.api_key,
-                        "baseURL": "https://api.siliconflow.com/v1"
+                        "baseURL": "https://api.siliconflow.com/v1",
+                        "timeout": 30000,
+                        "maxRetries": 2
                     },
                     "models": models_dict,
                 }
@@ -217,10 +230,13 @@ class EnhancedSiliconFlowConfigBuilder:
         config = {
             "name": model.name,
             "contextWindow": model.context_window,
+            "supportsChat": model.supports_chat,
             "supportsFunctionCalling": model.supports_function_calling,
             "supportsVision": model.supports_vision,
             "supportsAudio": model.supports_audio,
             "supportsVideo": model.supports_video,
+            "supportsEmbeddings": model.supports_embeddings,
+            "supportsRerank": model.supports_rerank,
         }
 
         if model.max_tokens:

@@ -432,6 +432,8 @@ If you see only reranker and embedding models in Crush:
 - **Missing Models**: Run the comprehensive fix script
 - **API Key Issues**: Ensure SILICONFLOW_API_KEY is set and valid
 - **Permission Issues**: Check file permissions on crush.json (should be 600)
+- **"Model does not exist" in OpenCode**: This occurs when non-chat models (embeddings, audio, video) are exposed to OpenCode. Fixed by filtering to only include chat-capable models. Run `./install --opencode` to regenerate configuration.
+- **Hanging requests in OpenCode**: Caused by missing timeout configuration. Fixed by adding `timeout: 30000` and `maxRetries: 2` to provider options. Run `./install --opencode` to update configuration.
 
 
 ## 📞 Support
