@@ -463,14 +463,6 @@ Examples:
         help="Custom Crush config directory (overrides --config-home for Crush)",
     )
 
-    parser.add_argument(
-        "--opencode-config-dir", type=Path, help="Custom OpenCode config directory"
-    )
-
-    parser.add_argument(
-        "--crush-config-dir", type=Path, help="Custom Crush config directory"
-    )
-
     args = parser.parse_args()
 
     # If neither flag is specified, install for both
