@@ -398,6 +398,40 @@ MIT License - see [LICENSE](LICENSE) for details.
 - **Charm**: For OpenCode and Crush platforms
 - **Community**: For model contributions and testing
 
+
+
+## 🔧 Troubleshooting
+
+### Models Not Appearing in Crush
+
+If you see only reranker and embedding models in Crush:
+
+1. **Check Configuration**:
+   ```bash
+   python3 fix_siliconflow_config.py
+   ```
+
+2. **Restart Crush**: After fixing the configuration, restart Crush completely
+
+3. **Verify Environment Variables**:
+   ```bash
+   source ~/.config/siliconflow_env.sh
+   echo $OPENAI_API_KEY
+   echo $OPENAI_BASE_URL
+   ```
+
+4. **Check Configuration File**:
+   ```bash
+   cat ~/.config/crush/crush.json | jq '.providers["siliconflow-chat"].models | length'
+   ```
+
+### Common Issues
+
+- **Missing Models**: Run the comprehensive fix script
+- **API Key Issues**: Ensure SILICONFLOW_API_KEY is set and valid
+- **Permission Issues**: Check file permissions on crush.json (should be 600)
+
+
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/your-repo/issues)

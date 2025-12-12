@@ -119,8 +119,8 @@ class EnhancedSiliconFlowConfigBuilder:
                 "models": [
                     self._create_crush_model_config(model)
                     for model in registry.chat_models.models[
-                        :25
-                    ]  # Limit to prevent config bloat
+                        :30
+                    ]  # Increased to ensure enough models are visible
                 ],
                 "timeout": 30000,
                 "retry_attempts": 2,
