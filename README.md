@@ -174,8 +174,10 @@ The toolkit generates fully compatible OpenCode configurations:
   "provider": {
     "siliconflow": {
       "name": "SiliconFlow",
-      "apiKey": "your-api-key",
-      "baseURL": "https://api.siliconflow.com/v1",
+      "options": {
+        "apiKey": "your-api-key",
+        "baseURL": "https://api.siliconflow.com/v1"
+      },
       "models": {
         "Qwen/Qwen2.5-7B-Instruct": {
           "name": "Qwen 2.5 7B Instruct",
@@ -440,5 +442,4 @@ If you see only reranker and embedding models in Crush:
 
 ---
 
-**Built with ❤️ for the AI development community**</content>
-<parameter name="filePath">/media/milosvasic/DATA4TB/Projects/SuperAgent/Toolkit/SiliconFlow/README.md
+**Built with ❤️ for the AI development community**

@@ -78,8 +78,10 @@ class EnhancedSiliconFlowConfigBuilder:
             "provider": {
                 "siliconflow": {
                     "name": "SiliconFlow",
-                    "apiKey": self.api_key,
-                    "baseURL": "https://api.siliconflow.com/v1",
+                    "options": {
+                        "apiKey": self.api_key,
+                        "baseURL": "https://api.siliconflow.com/v1"
+                    },
                     "models": models_dict,
                 }
             },
@@ -260,6 +262,32 @@ class EnhancedSiliconFlowConfigBuilder:
             return self._merge_crush_configs(existing_config, new_config)
         else:
             raise ValueError(f"Unknown config type: {config_type}")
+    def _is_model_valid_opencode(self, config: Dict[str, Any], model_id: str) -> bool:
+        """Check if a model ID exists in OpenCode SiliconFlow provider models"""
+        try:
+            models = config.get("provider", {}).get("siliconflow", {}).get("models", {})
+            return model_id in models
+        except (KeyError, TypeError):
+            return False
+
+    def _is_provider_valid_crush(self, config: Dict[str, Any], provider_id: str) -> bool:
+        """Check if a provider ID exists in Crush providers"""
+        try:
+            providers = config.get("providers", {})
+            return provider_id in providers
+        except (KeyError, TypeError):
+            return False
+
+    def _is_model_valid_crush(self, config: Dict[str, Any], model_id: str) -> bool:
+        """Check if a model ID exists in any Crush provider's models list"""
+        try:
+            for provider in config.get("providers", {}).values():
+                for model in provider.get("models", []):
+                    if model.get("id") == model_id:
+                        return True
+            return False
+        except (KeyError, TypeError):
+            return False
 
     def _merge_opencode_configs(
         self, existing: Dict[str, Any], new: Dict[str, Any]
@@ -270,7 +298,6 @@ class EnhancedSiliconFlowConfigBuilder:
         # Preserve user settings
         user_settings = {
             "theme": existing.get("theme"),
-            "model": existing.get("model"),
             "instructions": existing.get("instructions"),
             "tools": existing.get("tools"),
         }
@@ -283,7 +310,16 @@ class EnhancedSiliconFlowConfigBuilder:
         if "siliconflow" in new.get("provider", {}):
             merged["provider"]["siliconflow"] = new["provider"]["siliconflow"]
 
-        # Restore user settings
+        # Handle model selection
+        existing_model = existing.get("model")
+        if existing_model and self._is_model_valid_opencode(merged, existing_model):
+            # Keep existing model if it's still valid
+            merged["model"] = existing_model
+        else:
+            # Use new model from config or fallback
+            merged["model"] = new.get("model", merged.get("model"))
+
+        # Restore other user settings
         for key, value in user_settings.items():
             if value is not None:
                 merged[key] = value
@@ -299,10 +335,8 @@ class EnhancedSiliconFlowConfigBuilder:
         """Merge Crush configurations intelligently"""
         merged = existing.copy()
 
-        # Preserve user settings
+        # Preserve user settings (sampling only)
         user_settings = {
-            "defaultProvider": existing.get("defaultProvider"),
-            "defaultModel": existing.get("defaultModel"),
             "sampling": existing.get("sampling"),
         }
 
@@ -314,25 +348,36 @@ class EnhancedSiliconFlowConfigBuilder:
         for provider_key, provider_config in new.get("providers", {}).items():
             merged["providers"][provider_key] = provider_config
 
-        # Restore user settings if they still exist
+        # Handle default provider selection
+        existing_provider = existing.get("defaultProvider")
+        new_provider = new.get("defaultProvider")
+        if new_provider and self._is_provider_valid_crush(merged, new_provider):
+            # Use new default provider if provided and valid
+            merged["defaultProvider"] = new_provider
+        elif existing_provider and self._is_provider_valid_crush(merged, existing_provider):
+            # Keep existing provider if still valid
+            merged["defaultProvider"] = existing_provider
+        else:
+            # Fallback: use first provider or keep existing
+            merged["defaultProvider"] = existing_provider or new_provider or list(merged.get("providers", {}).keys())[0]
+
+        # Handle default model selection
+        existing_model = existing.get("defaultModel")
+        new_model = new.get("defaultModel")
+        if new_model and self._is_model_valid_crush(merged, new_model):
+            # Use new default model if provided and valid
+            merged["defaultModel"] = new_model
+        elif existing_model and self._is_model_valid_crush(merged, existing_model):
+            # Keep existing model if still valid
+            merged["defaultModel"] = existing_model
+        else:
+            # Fallback: use first model from default provider or keep existing
+            merged["defaultModel"] = existing_model or new_model
+
+        # Restore other user settings
         for key, value in user_settings.items():
             if value is not None:
-                # Only restore if the provider/model still exists
-                if key == "defaultProvider" and value in merged.get("providers", {}):
-                    merged[key] = value
-                elif key == "defaultModel":
-                    # Check if the model exists in any provider
-                    model_exists = False
-                    for provider in merged.get("providers", {}).values():
-                        if any(
-                            m.get("id") == value for m in provider.get("models", [])
-                        ):
-                            model_exists = True
-                            break
-                    if model_exists:
-                        merged[key] = value
-                else:
-                    merged[key] = value
+                merged[key] = value
 
         # Update schema and metadata
         merged["$schema"] = new.get("$schema", merged.get("$schema"))
@@ -403,8 +448,14 @@ def extract_api_key_from_existing_config(config_path: Path) -> Optional[str]:
         # Check OpenCode format
         if "provider" in config:
             provider = config.get("provider", {})
-            if "siliconflow" in provider and "apiKey" in provider["siliconflow"]:
-                return provider["siliconflow"]["apiKey"]
+            if "siliconflow" in provider:
+                sf_provider = provider["siliconflow"]
+                # Check new format (options.apiKey)
+                if "options" in sf_provider and "apiKey" in sf_provider["options"]:
+                    return sf_provider["options"]["apiKey"]
+                # Check old format (apiKey directly)
+                if "apiKey" in sf_provider:
+                    return sf_provider["apiKey"]
 
         return None
     except:

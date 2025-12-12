@@ -32,12 +32,25 @@ def verify_opencode_config():
             return False
 
         siliconflow_config = config["provider"]["siliconflow"]
-        required_fields = ["name", "apiKey", "baseURL", "models"]
+        required_fields = ["name", "models"]
 
         for field in required_fields:
             if field not in siliconflow_config:
                 print(f"❌ Missing required field '{field}' in SiliconFlow provider")
                 return False
+
+        # Check options object
+        if "options" not in siliconflow_config:
+            print("❌ Missing 'options' object in SiliconFlow provider")
+            return False
+        
+        options = siliconflow_config["options"]
+        if "apiKey" not in options:
+            print("❌ Missing 'apiKey' in SiliconFlow options")
+            return False
+        if "baseURL" not in options:
+            print("❌ Missing 'baseURL' in SiliconFlow options")
+            return False
 
         models = siliconflow_config["models"]
         if not isinstance(models, dict) or len(models) == 0:

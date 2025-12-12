@@ -180,3 +180,8 @@ secrets.json
 *.backup
 *.bak
 *~
+
+error.txt
+errors.txt
+
+

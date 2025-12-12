@@ -22,11 +22,24 @@ def validate_opencode_config(config: dict) -> bool:
 
     if "provider" in config and "siliconflow" in config["provider"]:
         sf_provider = config["provider"]["siliconflow"]
-        required_provider_fields = ["name", "apiKey", "baseURL", "models"]
+        required_provider_fields = ["name", "models"]
         for field in required_provider_fields:
             if field not in sf_provider:
                 print(f"❌ Missing required provider field: {field}")
                 return False
+
+        # Check options object
+        if "options" not in sf_provider:
+            print("❌ Missing 'options' object in SiliconFlow provider")
+            return False
+        
+        options = sf_provider["options"]
+        if "apiKey" not in options:
+            print("❌ Missing 'apiKey' in SiliconFlow options")
+            return False
+        if "baseURL" not in options:
+            print("❌ Missing 'baseURL' in SiliconFlow options")
+            return False
 
         # Check models structure
         models = sf_provider.get("models", {})
@@ -185,8 +198,10 @@ def test_config_merging():
         "provider": {
             "siliconflow": {
                 "name": "SiliconFlow",
-                "apiKey": "test-key",
-                "baseURL": "https://api.siliconflow.com/v1",
+                "options": {
+                    "apiKey": "test-key",
+                    "baseURL": "https://api.siliconflow.com/v1"
+                },
                 "models": {"test-model": {"name": "Test Model"}},
             }
         },

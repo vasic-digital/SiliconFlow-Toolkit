@@ -216,8 +216,10 @@ Crush:    ~/.config/crush/crush.json
   "provider": {
     "siliconflow": {
       "name": "SiliconFlow",
-      "apiKey": "your-key",
-      "baseURL": "https://api.siliconflow.com/v1",
+      "options": {
+        "apiKey": "your-key",
+        "baseURL": "https://api.siliconflow.com/v1"
+      },
       "models": {
         "Qwen/Qwen2.5-7B-Instruct": {
           "name": "Qwen 2.5 7B Instruct",

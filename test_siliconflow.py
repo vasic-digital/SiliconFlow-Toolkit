@@ -305,6 +305,7 @@ class TestSiliconFlowModelDiscovery(unittest.TestCase):
                 video_models=ModelCategory("Video", "Video models", []),
                 embedding_models=ModelCategory("Embedding", "Embedding models", []),
                 rerank_models=ModelCategory("Rerank", "Rerank models", []),
+                last_updated="2024-01-01T00:00:00",
             )
             mock_discover.return_value = registry
 
@@ -401,7 +402,10 @@ class TestEnhancedSiliconFlowConfigBuilder(unittest.TestCase):
             "provider": {
                 "siliconflow": {
                     "name": "SiliconFlow",
-                    "apiKey": "new-key",
+                    "options": {
+                        "apiKey": "new-key",
+                        "baseURL": "https://api.siliconflow.com/v1"
+                    },
                     "models": {"model1": {}},
                 }
             },

@@ -1,4 +1,4 @@
 #!/bin/bash
 
-./update_tools.sh && python3 install.sh
+python3 install.py "$@"
 
