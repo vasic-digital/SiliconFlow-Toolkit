@@ -418,10 +418,14 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s                    # Install for both OpenCode and Crush
-  %(prog)s --opencode         # Install only for OpenCode
-  %(prog)s --crush            # Install only for Crush
-  %(prog)s --opencode --crush # Install for both (same as default)
+  %(prog)s                                    # Install for both OpenCode and Crush
+  %(prog)s --opencode                         # Install only for OpenCode
+  %(prog)s --crush                            # Install only for Crush
+  %(prog)s --opencode --crush                 # Install for both (same as default)
+  %(prog)s --config-home /tmp/test-config     # Use custom config home directory
+  %(prog)s --opencode-config-dir /tmp/opencode # Custom OpenCode config directory
+  %(prog)s --crush-config-dir /tmp/crush      # Custom Crush config directory
+  %(prog)s --force                            # Force reinstallation
         """,
     )
 
@@ -439,6 +443,32 @@ Examples:
         "--force",
         action="store_true",
         help="Force installation even if configurations exist",
+    )
+
+    parser.add_argument(
+        "--config-home",
+        type=Path,
+        help="Custom config home directory (default: ~/.config). Both OpenCode and Crush will use subdirectories under this path.",
+    )
+
+    parser.add_argument(
+        "--opencode-config-dir",
+        type=Path,
+        help="Custom OpenCode config directory (overrides --config-home for OpenCode)",
+    )
+
+    parser.add_argument(
+        "--crush-config-dir",
+        type=Path,
+        help="Custom Crush config directory (overrides --config-home for Crush)",
+    )
+
+    parser.add_argument(
+        "--opencode-config-dir", type=Path, help="Custom OpenCode config directory"
+    )
+
+    parser.add_argument(
+        "--crush-config-dir", type=Path, help="Custom Crush config directory"
     )
 
     args = parser.parse_args()
@@ -468,6 +498,15 @@ def main():
     print(f"This script dynamically discovers all SiliconFlow models and capabilities.")
     print(f"Installing for: {platform_text}")
     print("Existing configurations will be intelligently merged.")
+
+    # Show custom config paths if specified
+    if args.config_home:
+        print(f"Config home: {args.config_home}")
+    if args.opencode_config_dir:
+        print(f"OpenCode config dir: {args.opencode_config_dir}")
+    if args.crush_config_dir:
+        print(f"Crush config dir: {args.crush_config_dir}")
+
     print("=" * 70)
 
     backup_dir = Path.home() / ".config" / "siliconflow_backups"
@@ -518,8 +557,18 @@ def main():
         if args.opencode:
             configs_to_build.append(("opencode", builder.build_opencode_config()))
 
-        crush_path = Path.home() / ".config" / "crush" / "crush.json"
-        opencode_path = Path.home() / ".config" / "opencode" / "config.json"
+        # Determine config paths
+        config_home = args.config_home or Path.home() / ".config"
+
+        if args.crush_config_dir:
+            crush_path = args.crush_config_dir / "crush.json"
+        else:
+            crush_path = config_home / "crush" / "crush.json"
+
+        if args.opencode_config_dir:
+            opencode_path = args.opencode_config_dir / "config.json"
+        else:
+            opencode_path = config_home / "opencode" / "config.json"
 
         print("\n📁 Saving configurations...")
 

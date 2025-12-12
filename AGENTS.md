@@ -15,9 +15,11 @@
 - **Sync configs**: `./sync.sh`
 
 ### Testing
-- **Run all tests**: `python3 test_siliconflow.py`
+- **Run unit tests**: `python3 test_siliconflow.py`
 - **Compatibility tests**: `python3 test_compatibility.py`
 - **Real API tests**: `SILICONFLOW_API_KEY=your-key python3 test_siliconflow.py`
+- **Integration tests**: `SILICONFLOW_API_KEY=your-key python3 integration_test.py`
+- **Platform-specific tests**: `python3 integration_test.py --opencode-only --crush-only`
 
 ## Code Style Guidelines
 

@@ -226,7 +226,7 @@ Compatible Crush configurations with multiple providers:
 ### Running Tests
 
 ```bash
-# Run all tests
+# Run unit tests
 python3 test_siliconflow.py
 
 # Run compatibility tests
@@ -234,6 +234,18 @@ python3 test_compatibility.py
 
 # Run with real API (requires SILICONFLOW_API_KEY)
 SILICONFLOW_API_KEY=your-key python3 test_siliconflow.py
+
+# Run full integration tests (clones and builds Crush/OpenCode locally)
+SILICONFLOW_API_KEY=your-key python3 integration_test.py
+
+# Run integration tests for specific platforms
+SILICONFLOW_API_KEY=your-key python3 integration_test.py --opencode-only
+SILICONFLOW_API_KEY=your-key python3 integration_test.py --crush-only
+
+# Run integration tests with custom config paths
+SILICONFLOW_API_KEY=your-key python3 integration_test.py \
+  --config-home /tmp/test-config \
+  --keep-temp
 ```
 
 ### Test Coverage
@@ -252,6 +264,21 @@ SILICONFLOW_API_KEY=your-key python3 test_siliconflow.py
 ✅ Configuration Generation: 82 OpenCode models, 4 Crush providers
 ✅ Schema Validation: All configurations compatible
 ```
+
+### Integration Tests
+
+The integration test suite provides end-to-end validation:
+
+- **Environment Validation**: Checks API keys and required tools
+- **Source Building**: Clones and builds Crush/OpenCode from GitHub
+- **Configuration Installation**: Tests custom config path options
+- **Headless Operation**: Starts applications in headless mode
+- **Model Verification**: Validates SiliconFlow model availability
+- **API Connectivity**: Tests real API calls and responses
+
+**Requirements**: Git, Go 1.19+, Node.js 18+, valid `SILICONFLOW_API_KEY`
+
+See [`INTEGRATION_TESTS.md`](INTEGRATION_TESTS.md) for detailed documentation.
 
 ## 📊 Model Categories
 
