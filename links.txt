@@ -1,5 +1,0 @@
-https://docs.siliconflow.com/en/api-reference
-https://opencode.ai/docs
-https://github.com/charmbracelet/crush
-https://github.com/charmbracelet/catwalk
-
